@@ -1,0 +1,2 @@
+# ZeroLaunch
+Simple minimal launcher 
