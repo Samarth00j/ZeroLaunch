@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#050507" />
+  <title>ZeroLaunch — Ultra-Lightweight Minimal Homescreen Launcher</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #050507;
+      --bg-surface: rgba(24, 24, 29, 0.72);
+      --bg-elevated: rgba(36, 36, 44, 0.85);
+      --text-primary: #f4f4f6;
+      --text-secondary: #9ca3af;
+      --accent: #10b981;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+    }
+    body.theme-eink {
+      --bg-primary: #f4f1ea;
+      --bg-surface: rgba(230, 226, 216, 0.85);
+      --bg-elevated: rgba(218, 213, 201, 0.95);
+      --text-primary: #18181b;
+      --text-secondary: #52525b;
+      --accent: #18181b;
+      --border-subtle: rgba(0, 0, 0, 0.12);
+    }
+    body.theme-terminal {
+      --bg-primary: #020905;
+      --bg-surface: rgba(6, 28, 16, 0.78);
+      --bg-elevated: rgba(10, 42, 24, 0.9);
+      --text-primary: #4ade80;
+      --text-secondary: #22c55e;
+      --accent: #4ade80;
+      --border-subtle: rgba(74, 222, 128, 0.18);
+    }
+    body.theme-nord {
+      --bg-primary: #0f172a;
+      --bg-surface: rgba(30, 41, 59, 0.78);
+      --bg-elevated: rgba(51, 65, 85, 0.88);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --accent: #38bdf8;
+      --border-subtle: rgba(148, 163, 184, 0.14);
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .surface-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .surface-elevated {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .text-muted-custom {
+      color: var(--text-secondary);
+    }
+    .accent-text {
+      color: var(--accent);
+    }
+    .accent-bg {
+      background-color: var(--accent);
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.25);
+      border-radius: 9999px;
+    }
+    @keyframes eqPulse1 {
+      0%, 100% { height: 4px; }
+      50% { height: 14px; }
+    }
+    @keyframes eqPulse2 {
+      0%, 100% { height: 13px; }
+      40% { height: 4px; }
+      80% { height: 15px; }
+    }
+    @keyframes eqPulse3 {
+      0%, 100% { height: 6px; }
+      60% { height: 16px; }
+    }
+    .eq-bar-1 { animation: eqPulse1 0.8s ease-in-out infinite; }
+    .eq-bar-2 { animation: eqPulse2 0.7s ease-in-out infinite; }
+    .eq-bar-3 { animation: eqPulse3 0.9s ease-in-out infinite; }
+    .eq-paused { animation: none !important; height: 4px !important; }
+    .torch-active {
+      box-shadow: inset 0 0 90px rgba(255, 250, 220, 0.45);
+    }
+    input, textarea {
+      user-select: text;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-0 sm:p-4">
+
+  <!-- Outer Responsive Shell: Phone Frame on Desktop, Fullscreen on Mobile -->
+  <div id="launcherShell" class="relative w-full max-w-[440px] min-h-screen sm:min-h-[840px] sm:max-h-[900px] sm:rounded-[38px] sm:border sm:border-white/15 sm:shadow-2xl overflow-hidden flex flex-col justify-between transition-all duration-300" style="background-color: var(--bg-primary);">
+
+    <!-- TOP STATUS BAR (Time, Date, Battery, Network, Launcher Footprint) -->
+    <header class="px-5 pt-3 pb-2 flex items-center justify-between text-xs font-mono-tech border-b border-white/5 z-20">
+      <div class="flex items-center gap-2">
+        <span id="statusBarTime" class="font-semibold tracking-tight">08:07</span>
+        <span class="opacity-40">|</span>
+        <span id="statusBarDate" class="text-muted-custom">Sun, Nov 1</span>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <span id="footprintBadge" title="ZeroLaunch Memory Footprint" class="px-1.5 py-0.5 rounded text-[10px] surface-card text-emerald-400 font-medium">0.9 MB</span>
+        <span id="wifiStatusIcon" class="text-muted-custom" title="Wi-Fi Connected">5G</span>
+        <div class="flex items-center gap-1" title="Battery Level">
+          <span id="batteryText" class="text-[11px]">92%</span>
+          <div class="w-5 h-2.5 rounded-sm border border-current p-0.5 flex items-center">
+            <div id="batteryFill" class="h-full bg-emerald-400 rounded-[1px]" style="width: 92%;"></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN HOMESCREEN CONTENT AREA -->
+    <main id="homeView" class="flex-1 overflow-y-auto px-5 py-3 flex flex-col justify-between gap-3.5 z-10">
+
+      <!-- 1. HERO CLOCK, DATE & QUICK STATUS -->
+      <section class="pt-1 flex flex-col items-start">
+        <div class="w-full flex items-baseline justify-between">
+          <button id="clockFormatBtn" type="button" class="text-left group focus:outline-none" title="Click to toggle 12h / 24h clock format">
+            <div class="flex items-baseline gap-1.5">
+              <h1 id="mainClock" class="text-5xl sm:text-6xl font-light tracking-tighter leading-none">08:07</h1>
+              <span id="mainSeconds" class="text-lg font-mono-tech text-muted-custom">34</span>
+              <span id="mainAmPm" class="text-xs font-mono-tech uppercase px-1.5 py-0.5 rounded surface-card text-muted-custom">AM</span>
+            </div>
+          </button>
+          <div class="flex items-center gap-1.5">
+            <button id="openInstallGuideBtn" type="button" class="px-2.5 py-1.5 rounded-full surface-card text-[11px] font-mono-tech text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition flex items-center gap-1" title="How to install & use on your phone Home Screen">
+              <span>📲</span>
+              <span>Use on Phone</span>
+            </button>
+            <button id="openSettingsBtn" type="button" class="p-2 rounded-full surface-card hover:opacity-80 transition" title="Launcher Settings & Themes" aria-label="Launcher Settings">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </button>
+          </div>
+        </div>
+
+        <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-custom">
+          <span id="fullDateDisplay" class="font-medium">Sunday, November 1, 2026</span>
+          <span>•</span>
+          <button id="focusModeQuickBtn" type="button" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full surface-card text-[11px] hover:opacity-90 transition">
+            <span id="focusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span id="focusStatusText">Zen Ready</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. SYSTEM TELEMETRY: CPU, RAM & SCREEN TIME -->
+      <section class="grid grid-cols-3 gap-2">
+        <!-- CPU Card -->
+        <button id="cpuCardBtn" type="button" class="surface-card rounded-2xl p-2.5 text-left transition hover:border-white/20 flex flex-col justify-between" title="Click to inspect CPU governor & processes">
+          <div class="flex items-center justify-between w-full">
+            <span class="text-[10px] font-mono-tech uppercase tracking-wider text-muted-custom">CPU Load</span>
+            <span id="cpuTempText" class="text-[10px] font-mono-tech text-emerald-400">34°C</span>
+          </div>
+          <div class="my-1 flex items-baseline gap-1">
+            <span id="cpuPercentText" class="text-lg font-mono-tech font-semibold">8%</span>
+            <span class="text-[10px] text-muted-custom">8-core</span>
+          </div>
+          <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div id="cpuBarFill" class="h-full bg-emerald-400 transition-all duration-300" style="width: 8%;"></div>
+          </div>
+        </button>
+
+        <!-- RAM Card (Click to Boost/Free RAM) -->
+        <button id="ramBoostBtn" type="button" class="surface-card rounded-2xl p-2.5 text-left transition hover:border-white/20 flex flex-col justify-between group" title="Tap to flush background cache & free RAM">
+          <div class="flex items-center justify-between w-full">
+            <span class="text-[10px] font-mono-tech uppercase tracking-wider text-muted-custom">RAM Used</span>
+            <span class="text-[9px] font-mono-tech px-1 rounded bg-white/10 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 transition">BOOST</span>
+          </div>
+          <div class="my-1 flex items-baseline gap-1">
+            <span id="ramUsedText" class="text-lg font-mono-tech font-semibold">2.1</span>
+            <span class="text-[10px] text-muted-custom">/ 8 GB (<span id="ramPercentText">26%</span>)</span>
+          </div>
+          <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div id="ramBarFill" class="h-full bg-sky-400 transition-all duration-300" style="width: 26%;"></div>
+          </div>
+        </button>
+
+        <!-- Screen Time Card (Click for Breakdown) -->
+        <button id="screenTimeCardBtn" type="button" class="surface-card rounded-2xl p-2.5 text-left transition hover:border-white/20 flex flex-col justify-between" title="Tap for detailed Screen Time analytics">
+          <div class="flex items-center justify-between w-full">
+            <span class="text-[10px] font-mono-tech uppercase tracking-wider text-muted-custom">Screen</span>
+            <span id="screenGoalPct" class="text-[10px] font-mono-tech text-amber-400">45%</span>
+          </div>
+          <div class="my-1 flex items-baseline gap-1">
+            <span id="screenTimeText" class="text-lg font-mono-tech font-semibold">2h 14m</span>
+          </div>
+          <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div id="screenTimeBarFill" class="h-full bg-amber-400 transition-all duration-300" style="width: 45%;"></div>
+          </div>
+        </button>
+      </section>
+
+      <!-- 3. INSTANT AUTO-LAUNCH SEARCH BAR -->
+      <section class="flex flex-col gap-1.5">
+        <div class="relative flex items-center">
+          <svg class="w-4 h-4 absolute left-3.5 text-muted-custom pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <input
+            id="quickSearchInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Search apps, math (e.g. 48*12), or commands..."
+            class="w-full pl-10 pr-24 py-2.5 rounded-2xl surface-card text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-400/60 transition"
+          />
+          <div class="absolute right-2 flex items-center gap-1">
+            <button id="clearSearchBtn" type="button" class="hidden p-1 text-xs text-muted-custom hover:text-white" title="Clear search">✕</button>
+            <button
+              id="autoLaunchToggleBtn"
+              type="button"
+              class="px-2 py-1 rounded-xl text-[10px] font-mono-tech font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition"
+              title="Toggle Auto-Launch when search narrows down to 1 matching app"
+            >
+              AUTO: ON
+            </button>
+          </div>
+        </div>
+
+        <!-- Inline Search Results / Math Evaluator Preview -->
+        <div id="inlineSearchResults" class="hidden surface-elevated rounded-2xl p-2 max-h-48 overflow-y-auto flex flex-col gap-1"></div>
+      </section>
+
+      <!-- 4. MINIMAL FAVORITE APPS LIST (Customizable, Zero-Icon-Clutter Typography Style) -->
+      <section class="flex-1 flex flex-col justify-center py-1">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[10px] font-mono-tech uppercase tracking-widest text-muted-custom">Pinned Favorites</span>
+          <button id="editFavoritesBtn" type="button" class="text-[11px] font-mono-tech text-muted-custom hover:underline">Edit Pins</button>
+        </div>
+        <div id="favoriteAppsList" class="flex flex-col divide-y divide-white/5">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </section>
+
+      <!-- 5. QUICK UTILITY PILLS (Torch, DND, RAM Saver, Notes Scratchpad, Terminal) -->
+      <section class="flex items-center justify-between gap-1.5 overflow-x-auto py-1">
+        <button id="toggleTorchBtn" type="button" class="flex-1 py-2 px-2.5 rounded-xl surface-card text-xs font-mono-tech flex items-center justify-center gap-1.5 hover:border-white/20 transition">
+          <span>🔦</span>
+          <span id="torchLabel">Torch</span>
+        </button>
+        <button id="toggleDndBtn" type="button" class="flex-1 py-2 px-2.5 rounded-xl surface-card text-xs font-mono-tech flex items-center justify-center gap-1.5 hover:border-white/20 transition">
+          <span>🌙</span>
+          <span id="dndLabel">DND Off</span>
+        </button>
+        <button id="toggleSaverBtn" type="button" class="flex-1 py-2 px-2.5 rounded-xl surface-card text-xs font-mono-tech flex items-center justify-center gap-1.5 hover:border-white/20 transition">
+          <span>⚡</span>
+          <span id="saverLabel">Eco Off</span>
+        </button>
+        <button id="openQuickNoteBtn" type="button" class="flex-1 py-2 px-2.5 rounded-xl surface-card text-xs font-mono-tech flex items-center justify-center gap-1.5 hover:border-white/20 transition">
+          <span>📝</span>
+          <span>Memo</span>
+        </button>
+      </section>
+
+      <!-- 6. CURRENT PLAYING MUSIC BAR -->
+      <section class="surface-card rounded-2xl p-3 flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-2">
+          <!-- Track Info & Equalizer -->
+          <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <button id="musicArtBtn" type="button" class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-700/40 border border-white/10 flex items-end justify-center gap-0.5 p-2 shrink-0" title="Toggle Web Audio Synth Sound">
+              <span id="eq1" class="w-1 bg-emerald-400 rounded-full eq-bar-1 eq-paused"></span>
+              <span id="eq2" class="w-1 bg-emerald-400 rounded-full eq-bar-2 eq-paused"></span>
+              <span id="eq3" class="w-1 bg-emerald-400 rounded-full eq-bar-3 eq-paused"></span>
+            </button>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <p id="trackTitle" class="text-xs font-medium truncate">Midnight Lo-Fi Pulse</p>
+                <span id="audioSynthBadge" class="text-[9px] font-mono-tech px-1.5 py-0.2 rounded bg-white/10 text-muted-custom">SYNTH</span>
+              </div>
+              <p id="trackArtist" class="text-[11px] text-muted-custom truncate">ZeroWave Ambient • <span id="trackTimeDisplay">01:12 / 03:20</span></p>
+            </div>
+          </div>
+
+          <!-- Transport Controls -->
+          <div class="flex items-center gap-1 shrink-0">
+            <button id="prevTrackBtn" type="button" class="p-1.5 rounded-lg hover:bg-white/10 transition" title="Previous Track" aria-label="Previous Track">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <button id="playPauseBtn" type="button" class="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 transition" title="Play / Pause Music" aria-label="Play or Pause">
+              <svg id="playIcon" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg id="pauseIcon" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            <button id="nextTrackBtn" type="button" class="p-1.5 rounded-lg hover:bg-white/10 transition" title="Next Track" aria-label="Next Track">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Scrubbing Progress Bar -->
+        <div class="flex items-center gap-2">
+          <input
+            id="musicProgressSlider"
+            type="range"
+            min="0"
+            max="200"
+            value="72"
+            aria-label="Track progress"
+            class="w-full h-1 bg-white/15 rounded-lg appearance-none cursor-pointer accent-emerald-400"
+          />
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 7. GESTURE BUTTON / PILL BAR TO SHOW ALL APPS -->
+    <footer class="px-5 pt-1.5 pb-3.5 flex flex-col items-center gap-1 z-20">
+      <button
+        id="gestureAllAppsBtn"
+        type="button"
+        class="w-full py-2.5 rounded-2xl surface-card hover:border-emerald-400/40 active:scale-[0.99] transition flex flex-col items-center justify-center gap-1 group cursor-pointer"
+        title="Swipe up or click to open All Apps Drawer (Shortcut: Space or /)"
+      >
+        <div class="w-12 h-1 rounded-full bg-white/40 group-hover:bg-emerald-400 group-hover:w-16 transition-all"></div>
+        <span class="text-[10px] font-mono-tech uppercase tracking-widest text-muted-custom group-hover:text-white transition">
+          Swipe Up or Tap • All Apps (<span id="totalAppsCount">24</span>)
+        </span>
+      </button>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- ALL APPS DRAWER OVERLAY (Gesture Activated)                           -->
+    <!-- ===================================================================== -->
+    <div id="allAppsDrawer" class="hidden absolute inset-0 surface-elevated z-30 flex flex-col justify-between p-5 transition-all duration-200">
+      <!-- Top Drawer Search & Category Filters -->
+      <div class="flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-semibold tracking-tight">All Applications</h2>
+            <p class="text-[11px] font-mono-tech text-muted-custom">Auto-launch active • Tap ★ to pin to Home</p>
+          </div>
+          <button id="closeDrawerBtn" type="button" class="px-3 py-1.5 rounded-xl surface-card text-xs font-mono-tech hover:bg-white/10">
+            Close ↓
+          </button>
+        </div>
+
+        <!-- Drawer Instant Search -->
+        <div class="relative flex items-center">
+          <svg class="w-4 h-4 absolute left-3.5 text-muted-custom pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <input
+            id="drawerSearchInput"
+            type="text"
+            autocomplete="off"
+            placeholder="Type app name to auto-launch..."
+            class="w-full pl-10 pr-4 py-2.5 rounded-2xl surface-card text-sm placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+          />
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div id="categoryFilterBar" class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-mono-tech">
+          <button type="button" data-cat="All" class="cat-pill px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">All</button>
+          <button type="button" data-cat="Tools" class="cat-pill px-2.5 py-1 rounded-xl surface-card text-muted-custom">Tools</button>
+          <button type="button" data-cat="Media" class="cat-pill px-2.5 py-1 rounded-xl surface-card text-muted-custom">Media</button>
+          <button type="button" data-cat="Social" class="cat-pill px-2.5 py-1 rounded-xl surface-card text-muted-custom">Social</button>
+          <button type="button" data-cat="Work" class="cat-pill px-2.5 py-1 rounded-xl surface-card text-muted-custom">Work</button>
+          <button type="button" data-cat="System" class="cat-pill px-2.5 py-1 rounded-xl surface-card text-muted-custom">System</button>
+        </div>
+      </div>
+
+      <!-- Main Drawer App List + A-Z Quick Jump Sidebar -->
+      <div class="flex-1 flex gap-2 overflow-hidden my-2">
+        <div id="drawerAppsContainer" class="flex-1 overflow-y-auto pr-1 flex flex-col divide-y divide-white/5">
+          <!-- Populated dynamically -->
+        </div>
+        <div id="azSidebar" class="w-5 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono-tech text-muted-custom select-none">
+          <!-- Populated A-Z buttons -->
+        </div>
+      </div>
+
+      <!-- Bottom Gesture Bar inside Drawer to return Home -->
+      <button id="drawerHomeGestureBtn" type="button" class="w-full py-2 rounded-2xl surface-card flex flex-col items-center justify-center gap-1">
+        <div class="w-10 h-1 rounded-full bg-white/40"></div>
+        <span class="text-[10px] font-mono-tech uppercase tracking-widest text-muted-custom">Swipe Down / Tap for Home</span>
+      </button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- ACTIVE LAUNCHED APP VIEW (Simulated Interactive Mini-Apps)            -->
+    <!-- ===================================================================== -->
+    <div id="launchedAppModal" class="hidden absolute inset-0 surface-elevated z-40 flex flex-col justify-between p-5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span id="activeAppIcon" class="text-xl">⚡</span>
+          <div>
+            <h3 id="activeAppTitle" class="text-sm font-semibold">App Name</h3>
+            <p id="activeAppMeta" class="text-[10px] font-mono-tech text-muted-custom">Process PID #4021 • 14 MB RAM</p>
+          </div>
+        </div>
+        <span id="launchMethodBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono-tech bg-emerald-500/20 text-emerald-300">Auto-Launched</span>
+      </div>
+
+      <!-- Dynamic Interactive App Workspace -->
+      <div id="activeAppBody" class="flex-1 overflow-y-auto py-4 flex flex-col justify-center">
+        <!-- Injected based on app launched -->
+      </div>
+
+      <!-- Bottom Home Gesture Bar -->
+      <button id="closeLaunchedAppBtn" type="button" class="w-full py-2.5 rounded-2xl surface-card hover:border-emerald-400/40 flex flex-col items-center justify-center gap-1">
+        <div class="w-12 h-1 rounded-full bg-emerald-400"></div>
+        <span class="text-[10px] font-mono-tech uppercase tracking-widest text-muted-custom">Gesture Home ↑</span>
+      </button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- SCREEN TIME & SYSTEM DIAGNOSTICS MODAL                                -->
+    <!-- ===================================================================== -->
+    <div id="diagnosticsModal" class="hidden absolute inset-0 surface-elevated z-40 flex flex-col justify-between p-5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <h3 class="text-base font-semibold">Screen Time & Resource Monitor</h3>
+          <p class="text-[11px] font-mono-tech text-muted-custom">Real-time wellness & lightweight telemetry</p>
+        </div>
+        <button id="closeDiagnosticsBtn" type="button" class="px-2.5 py-1 rounded-xl surface-card text-xs font-mono-tech">Done</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-3 flex flex-col gap-4">
+        <!-- Screen Time Summary -->
+        <div class="surface-card rounded-2xl p-3.5 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono-tech uppercase text-muted-custom">Daily Screen Time</span>
+            <span class="text-xs font-mono-tech text-amber-400">Goal: 5h 00m</span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span id="modalScreenTimeTotal" class="text-2xl font-mono-tech font-semibold">2h 14m</span>
+            <span class="text-xs text-emerald-400">-18% vs yesterday</span>
+          </div>
+          <div id="screenTimeAppList" class="mt-2 flex flex-col gap-2 text-xs">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- RAM & CPU Real-Time Breakdown -->
+        <div class="surface-card rounded-2xl p-3.5 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono-tech uppercase text-muted-custom">Memory & CPU Efficiency</span>
+            <button id="modalRamCleanBtn" type="button" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[11px] font-mono-tech">Free Unused RAM</button>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono-tech">
+            <div class="p-2 rounded-xl bg-white/5">
+              <div class="text-muted-custom text-[10px]">ZeroLaunch UI</div>
+              <div class="text-sm font-semibold text-emerald-400">0.9 MB RAM</div>
+            </div>
+            <div class="p-2 rounded-xl bg-white/5">
+              <div class="text-muted-custom text-[10px]">CPU Wakeups</div>
+              <div class="text-sm font-semibold text-sky-400">0.1% Idle</div>
+            </div>
+          </div>
+          <p class="text-[11px] text-muted-custom leading-relaxed">
+            ZeroLaunch replaces heavy icon grids and live wallpapers with pure typography and zero background polling, saving up to 340 MB RAM compared to stock launchers.
+          </p>
+        </div>
+      </div>
+
+      <button id="diagnosticsHomeBtn" type="button" class="w-full py-2 rounded-2xl surface-card text-xs font-mono-tech text-muted-custom">
+        Return to Homescreen
+      </button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- SETTINGS & THEME CUSTOMIZATION MODAL                                  -->
+    <!-- ===================================================================== -->
+    <div id="settingsModal" class="hidden absolute inset-0 surface-elevated z-40 flex flex-col justify-between p-5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <h3 class="text-base font-semibold">ZeroLaunch Preferences</h3>
+          <p class="text-[11px] font-mono-tech text-muted-custom">Ultra-lightweight launcher configuration</p>
+        </div>
+        <button id="closeSettingsBtn" type="button" class="px-2.5 py-1 rounded-xl surface-card text-xs font-mono-tech">Done</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-3 flex flex-col gap-4 text-xs">
+        <!-- Theme Selector -->
+        <div class="surface-card rounded-2xl p-3.5 flex flex-col gap-2">
+          <span class="font-mono-tech uppercase text-[10px] text-muted-custom">Minimal Color Theme</span>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" data-theme="oled" class="theme-OptionBtn p-2.5 rounded-xl border border-emerald-500/40 bg-black text-white font-mono-tech text-left">
+              ● OLED Pitch Black
+            </button>
+            <button type="button" data-theme="eink" class="theme-OptionBtn p-2.5 rounded-xl border border-white/10 bg-[#f4f1ea] text-zinc-900 font-mono-tech text-left">
+              ○ E-Ink Paper Light
+            </button>
+            <button type="button" data-theme="terminal" class="theme-OptionBtn p-2.5 rounded-xl border border-white/10 bg-[#020905] text-green-400 font-mono-tech text-left">
+              ○ Matrix Phosphor
+            </button>
+            <button type="button" data-theme="nord" class="theme-OptionBtn p-2.5 rounded-xl border border-white/10 bg-slate-900 text-sky-300 font-mono-tech text-left">
+              ○ Nord Slate Frost
+            </button>
+          </div>
+        </div>
+
+        <!-- Behavior Toggles -->
+        <div class="surface-card rounded-2xl p-3.5 flex flex-col gap-3">
+          <span class="font-mono-tech uppercase text-[10px] text-muted-custom">Search & Gesture Behavior</span>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span>Auto-launch when 1 app matches search</span>
+            <input id="settingAutoLaunchCheck" type="checkbox" checked class="accent-emerald-400 w-4 h-4" />
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span>24-Hour Military Clock Format</span>
+            <input id="setting24HourCheck" type="checkbox" class="accent-emerald-400 w-4 h-4" />
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span>Show Seconds on Homescreen Clock</span>
+            <input id="settingShowSecondsCheck" type="checkbox" checked class="accent-emerald-400 w-4 h-4" />
+          </label>
+          <label class="flex items-center justify-between cursor-pointer">
+            <span>Web Audio Ambient Synth on Music Play</span>
+            <input id="settingAudioSynthCheck" type="checkbox" checked class="accent-emerald-400 w-4 h-4" />
+          </label>
+        </div>
+      </div>
+
+      <button id="settingsHomeBtn" type="button" class="w-full py-2 rounded-2xl surface-card text-xs font-mono-tech text-muted-custom">
+        Save & Return Home
+      </button>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- QUICK MEMO SCRATCHPAD MODAL                                           -->
+    <!-- ===================================================================== -->
+    <div id="memoModal" class="hidden absolute inset-0 surface-elevated z-40 flex flex-col justify-between p-5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <h3 class="text-base font-semibold">Instant Scratchpad</h3>
+          <p class="text-[11px] font-mono-tech text-muted-custom">Saved locally with zero background drain</p>
+        </div>
+        <button id="closeMemoBtn" type="button" class="px-2.5 py-1 rounded-xl surface-card text-xs font-mono-tech">Save & Close</button>
+      </div>
+      <textarea
+        id="quickMemoTextarea"
+        placeholder="Jot down quick thoughts, tasks, or terminal snippets..."
+        class="flex-1 my-3 p-3 rounded-2xl surface-card text-xs font-mono-tech leading-relaxed focus:outline-none focus:ring-1 focus:ring-emerald-400 resize-none"
+      >- Ship minimal launcher build
+- Keep daily screen time under 3h
+- Review system memory footprint</textarea>
+      <div class="flex items-center justify-between text-[11px] font-mono-tech text-muted-custom">
+        <span id="memoCharCount">88 chars</span>
+        <button id="clearMemoBtn" type="button" class="text-rose-400 hover:underline">Clear Note</button>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PHONE HOME SCREEN SETUP & REAL DEVICE LINKING MODAL                   -->
+    <!-- ===================================================================== -->
+    <div id="installGuideModal" class="hidden absolute inset-0 surface-elevated z-40 flex flex-col justify-between p-5">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div>
+          <h3 class="text-base font-semibold">Use ZeroLaunch on Your Phone</h3>
+          <p class="text-[11px] font-mono-tech text-muted-custom">3 ways to run this on your real Home Screen</p>
+        </div>
+        <button id="closeInstallGuideBtn" type="button" class="px-2.5 py-1 rounded-xl surface-card text-xs font-mono-tech">Done</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-3 flex flex-col gap-3 text-xs">
+        <!-- Real Device App Bridge Toggle -->
+        <div class="surface-card rounded-2xl p-3.5 border border-emerald-500/30 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="font-mono-tech uppercase text-[10px] text-emerald-400">Real Device App Bridge</span>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input id="realDeviceUriCheck" type="checkbox" class="accent-emerald-400 w-4 h-4" />
+              <span class="font-mono-tech text-[11px]">Enable Deep Links</span>
+            </label>
+          </div>
+          <p class="text-[11px] text-muted-custom leading-relaxed">
+            When enabled on your phone, launching apps like <strong>Dialer (`tel:`)</strong>, <strong>Messages (`sms:`)</strong>, <strong>Mail (`mailto:`)</strong>, <strong>Maps (`geo:`)</strong>, or <strong>Browser (`https:`)</strong> triggers your phone's real installed apps directly.
+          </p>
+          <button id="fullscreenToggleBtn" type="button" class="mt-1 py-2 px-3 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono-tech text-xs hover:bg-emerald-500/30 transition">
+            ⛶ Enter Fullscreen Launcher Mode Now
+          </button>
+        </div>
+
+        <!-- Step 1: PWA Add to Home Screen -->
+        <div class="surface-card rounded-2xl p-3.5 flex flex-col gap-1.5">
+          <div class="font-semibold text-emerald-300">Method 1: Fullscreen Web App (Fastest • 30 sec)</div>
+          <ol class="list-decimal list-inside text-[11px] text-muted-custom space-y-1 leading-relaxed">
+            <li>Download this HTML file (or host it free on <strong>GitHub Pages</strong> / <strong>Netlify Drop</strong>).</li>
+            <li>Open the link in <strong>Chrome</strong> (Android) or <strong>Safari</strong> (iOS).</li>
+            <li>Tap <strong>Browser Menu (⋮ or Share) → Add to Home Screen</strong>.</li>
+            <li>Launch it from your home screen—it opens borderless without browser bars.</li>
+          </ol>
+        </div>
+
+        <!-- Step 2: Set as Default Android Home Button via Kiosk/WebView APK -->
+        <div class="surface-card rounded-2xl p-3.5 flex flex-col gap-1.5">
+          <div class="font-semibold text-sky-300">Method 2: Default Home Button Replacement (Android)</div>
+          <p class="text-[11px] text-muted-custom leading-relaxed">
+            Android requires a native APK with <code class="text-white">CATEGORY_HOME</code> in <code class="text-white">AndroidManifest.xml</code> to replace your system launcher when pressing the Home button. You can wrap this HTML file in <strong>WebAPK / Cordova / Android Studio WebView</strong> or use <strong>Fully Kiosk Launcher</strong> pointing to this file.
+          </p>
+        </div>
+      </div>
+
+      <button id="installGuideHomeBtn" type="button" class="w-full py-2 rounded-2xl surface-card text-xs font-mono-tech text-muted-custom">
+        Back to Launcher
+      </button>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toastBanner" class="pointer-events-none opacity-0 transition-opacity duration-200 absolute top-12 left-1/2 -translate-x-1/2 px-3.5 py-1.5 rounded-full surface-elevated text-xs font-mono-tech text-emerald-300 shadow-lg z-50 whitespace-nowrap">
+      Action completed
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // STATE & APPLICATION CATALOG
+    // =========================================================================
+    const APPS_CATALOG = [
+      { id: 'browser', name: 'Arc Minimal Browser', category: 'Tools', icon: '🌐', pinned: true, screenMinutes: 38, ramMb: 84 },
+      { id: 'terminal', name: 'Termux Shell', category: 'System', icon: '⌨️', pinned: true, screenMinutes: 29, ramMb: 18 },
+      { id: 'notes', name: 'Obsidian Notes', category: 'Work', icon: '📝', pinned: true, screenMinutes: 22, ramMb: 42 },
+      { id: 'music', name: 'ZeroWave Music', category: 'Media', icon: '🎵', pinned: true, screenMinutes: 19, ramMb: 28 },
+      { id: 'calculator', name: 'Calculator Pro', category: 'Tools', icon: '🧮', pinned: true, screenMinutes: 6, ramMb: 9 },
+      { id: 'camera', name: 'Leica Minimal Cam', category: 'Media', icon: '📷', pinned: true, screenMinutes: 8, ramMb: 65 },
+      { id: 'calendar', name: 'Chrono Calendar', category: 'Work', icon: '📅', pinned: false, screenMinutes: 5, ramMb: 21 },
+      { id: 'clock', name: 'Pomodoro & Clock', category: 'Tools', icon: '⏱️', pinned: false, screenMinutes: 4, ramMb: 8 },
+      { id: 'files', name: 'Ranger Files', category: 'System', icon: '📁', pinned: false, screenMinutes: 3, ramMb: 14 },
+      { id: 'mail', name: 'Proton Mail', category: 'Work', icon: '✉️', pinned: false, screenMinutes: 0, ramMb: 36 },
+      { id: 'maps', name: 'Organic Maps', category: 'Tools', icon: '🧭', pinned: false, screenMinutes: 0, ramMb: 52 },
+      { id: 'messages', name: 'Signal Private Messenger', category: 'Social', icon: '💬', pinned: false, screenMinutes: 0, ramMb: 44 },
+      { id: 'phone', name: 'Dialer & Phone', category: 'Social', icon: '📞', pinned: false, screenMinutes: 0, ramMb: 12 },
+      { id: 'weather', name: 'Breezy Weather', category: 'Tools', icon: '🌦️', pinned: false, screenMinutes: 0, ramMb: 16 },
+      { id: 'git', name: 'GitHub Mobile', category: 'Work', icon: '🐙', pinned: false, screenMinutes: 0, ramMb: 48 },
+      { id: 'podcasts', name: 'AntennaPod', category: 'Media', icon: '🎙️', pinned: false, screenMinutes: 0, ramMb: 26 },
+      { id: 'reader', name: 'ReadYou RSS', category: 'Media', icon: '📰', pinned: false, screenMinutes: 0, ramMb: 19 },
+      { id: 'authenticator', name: 'Aegis 2FA Vault', category: 'System', icon: '🔐', pinned: false, screenMinutes: 0, ramMb: 11 },
+      { id: 'tasks', name: 'Tasks.org Minimal', category: 'Work', icon: '✅', pinned: false, screenMinutes: 0, ramMb: 15 },
+      { id: 'gallery', name: 'Fossify Gallery', category: 'Media', icon: '🖼️', pinned: false, screenMinutes: 0, ramMb: 32 },
+      { id: 'contacts', name: 'Simple Contacts', category: 'Social', icon: '👤', pinned: false, screenMinutes: 0, ramMb: 10 },
+      { id: 'voice', name: 'Voice Recorder', category: 'Tools', icon: '🎤', pinned: false, screenMinutes: 0, ramMb: 13 },
+      { id: 'monitor', name: 'Kernel CPU Profiler', category: 'System', icon: '📊', pinned: false, screenMinutes: 0, ramMb: 12 },
+      { id: 'settings', name: 'System Settings', category: 'System', icon: '⚙️', pinned: false, screenMinutes: 0, ramMb: 20 }
+    ];
+
+    const PLAYLIST = [
+      { title: 'Midnight Lo-Fi Pulse', artist: 'ZeroWave Ambient', duration: 200, freq: [220, 277.18, 329.63] },
+      { title: 'Sub-Millisecond Horizon', artist: 'Klang Minimal', duration: 175, freq: [196, 246.94, 293.66] },
+      { title: 'Solaris Terminal Drift', artist: 'Monospace Collective', duration: 240, freq: [174.61, 220, 261.63] },
+      { title: 'Deep Focus Brown Noise', artist: 'Neural Zen', duration: 300, freq: [146.83, 185, 220] }
+    ];
+
+    const state = {
+      autoLaunch: true,
+      use24Hour: false,
+      showSeconds: true,
+      enableSynth: true,
+      editingFavorites: false,
+      selectedCategory: 'All',
+      cpuLoad: 8,
+      cpuTemp: 34,
+      ramUsedGb: 2.1,
+      ramTotalGb: 8.0,
+      screenTimeSeconds: (2 * 3600) + (14 * 60), // 2h 14m
+      torchOn: false,
+      dndOn: false,
+      ecoOn: false,
+      zenMode: false,
+      isPlaying: false,
+      currentTrackIndex: 0,
+      trackPosition: 72,
+      touchStartY: null,
+      realDeviceUriMode: false
+    };
+
+    const REAL_APP_URIS = {
+      phone: 'tel:',
+      messages: 'sms:',
+      mail: 'mailto:',
+      maps: 'https://maps.google.com',
+      browser: 'https://www.google.com',
+      git: 'https://github.com',
+      weather: 'https://wttr.in',
+      music: 'https://music.youtube.com',
+      calendar: 'https://calendar.google.com'
+    };
+
+    // Web Audio API Synthesizer for self-contained ambient music
+    let audioCtx = null;
+    let synthNodes = [];
+
+    function stopSynthAudio() {
+      synthNodes.forEach(node => {
+        try { node.stop(); } catch (e) {}
+        try { node.disconnect(); } catch (e) {}
+      });
+      synthNodes = [];
+    }
+
+    function startSynthAudio() {
+      if (!state.enableSynth || !state.isPlaying) return;
+      stopSynthAudio();
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!audioCtx) audioCtx = new AudioContextClass();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const track = PLAYLIST[state.currentTrackIndex];
+        const masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.025; // Gentle ambient pad volume
+        masterGain.connect(audioCtx.destination);
+
+        track.freq.forEach((f, idx) => {
+          const osc = audioCtx.createOscillator();
+          osc.type = idx === 0 ? 'sine' : 'triangle';
+          osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+          osc.connect(masterGain);
+          osc.start();
+          synthNodes.push(osc);
+        });
+      } catch (e) {
+        // Ignore browser autoplay restrictions if not triggered by gesture
+      }
+    }
+
+    // =========================================================================
+    // TOAST HELPER
+    // =========================================================================
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toastBanner');
+      el.textContent = msg;
+      el.classList.remove('opacity-0');
+      el.classList.add('opacity-100');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.remove('opacity-100');
+        el.classList.add('opacity-0');
+      }, 2100);
+    }
+
+    // =========================================================================
+    // LIVE CLOCK, DATE & SCREEN TIME UPDATER
+    // =========================================================================
+    function updateClockAndDate() {
+      const now = new Date();
+      let hours = now.getHours();
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+
+      let displayHours = hours;
+      if (!state.use24Hour) {
+        displayHours = hours % 12 || 12;
+      }
+      const paddedHours = String(displayHours).padStart(2, '0');
+
+      document.getElementById('mainClock').textContent = `${paddedHours}:${mins}`;
+      document.getElementById('statusBarTime').textContent = `${paddedHours}:${mins}`;
+
+      const secEl = document.getElementById('mainSeconds');
+      secEl.textContent = secs;
+      secEl.style.display = state.showSeconds ? 'inline' : 'none';
+
+      const ampmEl = document.getElementById('mainAmPm');
+      ampmEl.textContent = state.use24Hour ? '24H' : ampm;
+
+      const shortDate = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const fullDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      document.getElementById('statusBarDate').textContent = shortDate;
+      document.getElementById('fullDateDisplay').textContent = fullDate;
+    }
+
+    function formatDuration(totalSeconds) {
+      const hrs = Math.floor(totalSeconds / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      return `${hrs}h ${String(mins).padStart(2, '0')}m`;
+    }
+
+    function updateTelemetryTick() {
+      // Increment screen time by 1 second
+      state.screenTimeSeconds += 1;
+      const formattedScreen = formatDuration(state.screenTimeSeconds);
+      document.getElementById('screenTimeText').textContent = formattedScreen;
+      document.getElementById('modalScreenTimeTotal').textContent = formattedScreen;
+
+      const goalSeconds = 5 * 3600;
+      const goalPct = Math.min(100, Math.round((state.screenTimeSeconds / goalSeconds) * 100));
+      document.getElementById('screenGoalPct').textContent = `${goalPct}%`;
+      document.getElementById('screenTimeBarFill').style.width = `${goalPct}%`;
+
+      // Realistic ultra-low CPU & RAM fluctuations
+      const baseCpu = state.ecoOn ? 3 : 7;
+      const jitter = Math.floor(Math.random() * 6) - 2;
+      state.cpuLoad = Math.max(2, Math.min(45, baseCpu + jitter + (state.isPlaying ? 3 : 0)));
+      state.cpuTemp = state.ecoOn ? 31 : (33 + Math.floor(state.cpuLoad / 10));
+
+      document.getElementById('cpuPercentText').textContent = `${state.cpuLoad}%`;
+      document.getElementById('cpuTempText').textContent = `${state.cpuTemp}°C`;
+      document.getElementById('cpuBarFill').style.width = `${state.cpuLoad}%`;
+
+      const ramPct = Math.round((state.ramUsedGb / state.ramTotalGb) * 100);
+      document.getElementById('ramUsedText').textContent = state.ramUsedGb.toFixed(1);
+      document.getElementById('ramPercentText').textContent = `${ramPct}%`;
+      document.getElementById('ramBarFill').style.width = `${ramPct}%`;
+
+      // Music progression
+      if (state.isPlaying) {
+        const track = PLAYLIST[state.currentTrackIndex];
+        state.trackPosition = (state.trackPosition + 1) % track.duration;
+        renderMusicPlayer();
+      }
+    }
+
+    // =========================================================================
+    // FAVORITE APPS RENDERING
+    // =========================================================================
+    function renderFavorites() {
+      const container = document.getElementById('favoriteAppsList');
+      const pinnedApps = APPS_CATALOG.filter(a => a.pinned);
+      container.innerHTML = '';
+
+      if (pinnedApps.length === 0) {
+        container.innerHTML = `<p class="text-xs text-muted-custom py-3">No pinned apps. Open All Apps drawer to pin your favorites.</p>`;
+        return;
+      }
+
+      pinnedApps.forEach((app, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between py-2 group';
+        row.innerHTML = `
+          <button type="button" data-launch-id="${app.id}" class="flex-1 text-left flex items-center justify-between pr-2 focus:outline-none">
+            <div class="flex items-center gap-2.5">
+              <span class="text-xs font-mono-tech text-muted-custom w-4">0${idx + 1}</span>
+              <span class="text-base sm:text-lg font-normal tracking-tight group-hover:translate-x-1 transition-transform">${app.name}</span>
+            </div>
+            <span class="text-[11px] font-mono-tech text-muted-custom opacity-60 group-hover:opacity-100">${app.category}</span>
+          </button>
+          ${state.editingFavorites ? `
+            <button type="button" data-unpin-id="${app.id}" class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-mono-tech">Unpin</button>
+          ` : ''}
+        `;
+        container.appendChild(row);
+      });
+
+      container.querySelectorAll('[data-launch-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          launchApp(btn.getAttribute('data-launch-id'), 'Home Tap');
+        });
+      });
+
+      container.querySelectorAll('[data-unpin-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-unpin-id');
+          const target = APPS_CATALOG.find(a => a.id === id);
+          if (target) {
+            target.pinned = false;
+            renderFavorites();
+            renderDrawerApps();
+            showToast(`Removed ${target.name} from Home`);
+          }
+        });
+      });
+    }
+
+    // =========================================================================
+    // AUTO-LAUNCH SEARCH & INLINE CALCULATOR
+    // =========================================================================
+    function evaluateMathExpression(query) {
+      const cleaned = query.replace(/\s+/g, '');
+      if (!/^[0-9+\-*/().%^]+$/.test(cleaned) || !/[+\-*/%^]/.test(cleaned)) return null;
+      try {
+        const normalized = cleaned.replace(/\^/g, '**');
+        const result = Function(`"use strict"; return (${normalized})`)();
+        if (typeof result === 'number' && isFinite(result)) {
+          return Number.isInteger(result) ? result : Number(result.toFixed(4));
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function handleSearchQuery(rawQuery, isFromDrawer = false) {
+      const query = rawQuery.trim().toLowerCase();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      const resultsBox = document.getElementById('inlineSearchResults');
+
+      if (!isFromDrawer) {
+        clearBtn.classList.toggle('hidden', query.length === 0);
+      }
+
+      if (query.length === 0) {
+        if (!isFromDrawer) resultsBox.classList.add('hidden');
+        if (isFromDrawer) renderDrawerApps('');
+        return;
+      }
+
+      const matches = APPS_CATALOG.filter(app =>
+        app.name.toLowerCase().includes(query) ||
+        app.id.toLowerCase().includes(query) ||
+        app.category.toLowerCase().includes(query)
+      );
+
+      // AUTO-LAUNCH LOGIC: If autoLaunch is ON and exactly 1 app matches
+      if (state.autoLaunch && matches.length === 1 && query.length >= 2) {
+        const matchedApp = matches[0];
+        if (isFromDrawer) {
+          document.getElementById('drawerSearchInput').value = '';
+          closeDrawer();
+        } else {
+          document.getElementById('quickSearchInput').value = '';
+          clearBtn.classList.add('hidden');
+          resultsBox.classList.add('hidden');
+        }
+        launchApp(matchedApp.id, 'Instant Auto-Launch');
+        return;
+      }
+
+      if (isFromDrawer) {
+        renderDrawerApps(query);
+        return;
+      }
+
+      // Render inline results + math calculator on Home search
+      resultsBox.innerHTML = '';
+      resultsBox.classList.remove('hidden');
+
+      const mathResult = evaluateMathExpression(query);
+      if (mathResult !== null) {
+        const mathRow = document.createElement('div');
+        mathRow.className = 'flex items-center justify-between px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs font-mono-tech';
+        mathRow.innerHTML = `
+          <span>🧮 ${rawQuery} = <strong class="text-emerald-300 text-sm">${mathResult}</strong></span>
+          <span class="text-[10px] text-muted-custom">Instant Math</span>
+        `;
+        resultsBox.appendChild(mathRow);
+      }
+
+      if (matches.length === 0 && mathResult === null) {
+        resultsBox.innerHTML = `<div class="px-3 py-2 text-xs text-muted-custom font-mono-tech">No matching local app. Press Enter to search web.</div>`;
+        return;
+      }
+
+      matches.slice(0, 5).forEach(app => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'w-full px-3 py-2 rounded-xl hover:bg-white/10 flex items-center justify-between text-left transition';
+        btn.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span>${app.icon}</span>
+            <span class="text-xs font-medium">${app.name}</span>
+          </div>
+          <span class="text-[10px] font-mono-tech text-emerald-400">Launch ↵</span>
+        `;
+        btn.addEventListener('click', () => {
+          document.getElementById('quickSearchInput').value = '';
+          clearBtn.classList.add('hidden');
+          resultsBox.classList.add('hidden');
+          launchApp(app.id, 'Search Select');
+        });
+        resultsBox.appendChild(btn);
+      });
+    }
+
+    // =========================================================================
+    // ALL APPS DRAWER & A-Z SIDEBAR
+    // =========================================================================
+    function renderDrawerApps(searchFilter = '') {
+      const container = document.getElementById('drawerAppsContainer');
+      const query = searchFilter.trim().toLowerCase();
+
+      const filtered = APPS_CATALOG
+        .filter(app => state.selectedCategory === 'All' || app.category === state.selectedCategory)
+        .filter(app => !query || app.name.toLowerCase().includes(query) || app.category.toLowerCase().includes(query))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      document.getElementById('totalAppsCount').textContent = APPS_CATALOG.length;
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="py-8 text-center text-xs text-muted-custom font-mono-tech">No apps match filter "${searchFilter}"</div>`;
+        return;
+      }
+
+      filtered.forEach(app => {
+        const item = document.createElement('div');
+        item.className = 'py-2.5 px-2 flex items-center justify-between hover:bg-white/5 rounded-xl transition';
+        item.setAttribute('data-letter', app.name[0].toUpperCase());
+        item.innerHTML = `
+          <button type="button" data-drawer-launch="${app.id}" class="flex-1 flex items-center gap-3 text-left">
+            <span class="text-base">${app.icon}</span>
+            <div>
+              <div class="text-sm font-medium">${app.name}</div>
+              <div class="text-[10px] font-mono-tech text-muted-custom">${app.category} • ${app.ramMb} MB • ${app.screenMinutes}m today</div>
+            </div>
+          </button>
+          <button type="button" data-pin-toggle="${app.id}" class="p-1.5 rounded-lg text-xs font-mono-tech ${app.pinned ? 'text-amber-400' : 'text-muted-custom opacity-50 hover:opacity-100'}" title="Pin / Unpin to Homescreen">
+            ${app.pinned ? '★' : '☆'}
+          </button>
+        `;
+        container.appendChild(item);
+      });
+
+      container.querySelectorAll('[data-drawer-launch]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          closeDrawer();
+          launchApp(btn.getAttribute('data-drawer-launch'), 'App Drawer');
+        });
+      });
+
+      container.querySelectorAll('[data-pin-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-pin-toggle');
+          const app = APPS_CATALOG.find(a => a.id === id);
+          if (app) {
+            app.pinned = !app.pinned;
+            renderFavorites();
+            renderDrawerApps(document.getElementById('drawerSearchInput').value);
+            showToast(app.pinned ? `Pinned ${app.name} to Home` : `Unpinned ${app.name}`);
+          }
+        });
+      });
+    }
+
+    function renderAzSidebar() {
+      const sidebar = document.getElementById('azSidebar');
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      sidebar.innerHTML = '';
+      letters.forEach(letter => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = letter;
+        btn.className = 'hover:text-emerald-400 leading-none py-0.5';
+        btn.addEventListener('click', () => {
+          const target = document.querySelector(`#drawerAppsContainer [data-letter="${letter}"]`);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+        sidebar.appendChild(btn);
+      });
+    }
+
+    function openDrawer() {
+      document.getElementById('allAppsDrawer').classList.remove('hidden');
+      renderDrawerApps('');
+      const input = document.getElementById('drawerSearchInput');
+      input.value = '';
+      setTimeout(() => input.focus(), 60);
+    }
+
+    function closeDrawer() {
+      document.getElementById('allAppsDrawer').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // SIMULATED INTERACTIVE MINI-APP LAUNCHER
+    // =========================================================================
+    function launchApp(appId, methodLabel = 'Launched') {
+      const app = APPS_CATALOG.find(a => a.id === appId);
+      if (!app) return;
+
+      if (window.AndroidBridge && app.isNativeAndroid) {
+        app.screenMinutes += 1;
+        window.AndroidBridge.launchPackage(app.id);
+        return;
+      }
+      if (state.realDeviceUriMode && REAL_APP_URIS[app.id]) {
+        showToast(`Opening native ${app.name}...`);
+        window.open(REAL_APP_URIS[app.id], '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      // Update usage stats
+      app.screenMinutes += 1;
+      state.ramUsedGb = Math.min(7.4, Number((state.ramUsedGb + (app.ramMb / 1024)).toFixed(2)));
+
+      document.getElementById('activeAppIcon').textContent = app.icon;
+      document.getElementById('activeAppTitle').textContent = app.name;
+      document.getElementById('activeAppMeta').textContent = `PID #${Math.floor(1000 + Math.random() * 8000)} • ${app.ramMb} MB RAM • ${app.screenMinutes}m today`;
+      document.getElementById('launchMethodBadge').textContent = methodLabel;
+
+      const body = document.getElementById('activeAppBody');
+      if (app.id === 'calculator') {
+        body.innerHTML = `
+          <div class="surface-card rounded-2xl p-4 flex flex-col gap-3">
+            <input id="miniCalcInput" type="text" placeholder="e.g. (250 * 18) / 12" class="w-full p-3 rounded-xl bg-black/40 font-mono-tech text-base focus:outline-none" value="144 * 12" />
+            <button id="miniCalcRunBtn" type="button" class="py-2 rounded-xl bg-emerald-500/20 text-emerald-300 font-mono-tech text-xs">Calculate Result</button>
+            <div id="miniCalcOutput" class="text-2xl font-mono-tech font-semibold text-emerald-400">= 1728</div>
+          </div>
+        `;
+        setTimeout(() => {
+          const inp = document.getElementById('miniCalcInput');
+          const out = document.getElementById('miniCalcOutput');
+          document.getElementById('miniCalcRunBtn').addEventListener('click', () => {
+            const val = evaluateMathExpression(inp.value);
+            out.textContent = val !== null ? `= ${val}` : 'Invalid expression';
+          });
+        }, 20);
+      } else if (app.id === 'terminal') {
+        body.innerHTML = `
+          <div class="surface-card rounded-2xl p-3.5 font-mono-tech text-xs flex flex-col gap-2 h-64 overflow-y-auto bg-black/60">
+            <div class="text-emerald-400">zero@launcher:~$ neofetch --minimal</div>
+            <div class="text-muted-custom">OS: ZeroLaunch Minimal Environment</div>
+            <div class="text-muted-custom">Kernel: 6.11-ultralight-arm64</div>
+            <div class="text-muted-custom">Uptime: 4 days, 2 hours</div>
+            <div class="text-muted-custom">Memory: ${(state.ramUsedGb * 1024).toFixed(0)}MiB / 8192MiB</div>
+            <div class="text-emerald-400 mt-2">zero@launcher:~$ top -n 1</div>
+            <div class="text-muted-custom">PID 001 zerolaunch-ui   0.1% CPU   0.9MB RAM</div>
+          </div>
+        `;
+      } else {
+        body.innerHTML = `
+          <div class="surface-card rounded-2xl p-5 flex flex-col items-center text-center gap-3">
+            <div class="text-4xl">${app.icon}</div>
+            <h4 class="text-base font-semibold">${app.name}</h4>
+            <p class="text-xs text-muted-custom max-w-xs leading-relaxed">
+              Launched in <strong>14ms</strong> via ZeroLaunch (${methodLabel}). Memory sandbox active with ${app.ramMb} MB allocated.
+            </p>
+            <div class="w-full grid grid-cols-2 gap-2 mt-2 text-xs font-mono-tech">
+              <div class="p-2.5 rounded-xl bg-white/5">
+                <div class="text-[10px] text-muted-custom">Today's Usage</div>
+                <div class="text-sm font-semibold text-amber-400">${app.screenMinutes} mins</div>
+              </div>
+              <div class="p-2.5 rounded-xl bg-white/5">
+                <div class="text-[10px] text-muted-custom">RAM Footprint</div>
+                <div class="text-sm font-semibold text-sky-400">${app.ramMb} MB</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      document.getElementById('launchedAppModal').classList.remove('hidden');
+      showToast(`${methodLabel}: ${app.name}`);
+    }
+
+    // =========================================================================
+    // MUSIC BAR CONTROLS
+    // =========================================================================
+    function renderMusicPlayer() {
+      const track = PLAYLIST[state.currentTrackIndex];
+      document.getElementById('trackTitle').textContent = track.title;
+      const curMin = String(Math.floor(state.trackPosition / 60)).padStart(2, '0');
+      const curSec = String(state.trackPosition % 60).padStart(2, '0');
+      const totMin = String(Math.floor(track.duration / 60)).padStart(2, '0');
+      const totSec = String(track.duration % 60).padStart(2, '0');
+
+      document.getElementById('trackArtist').innerHTML = `${track.artist} • <span id="trackTimeDisplay">${curMin}:${curSec} / ${totMin}:${totSec}</span>`;
+
+      const slider = document.getElementById('musicProgressSlider');
+      slider.max = track.duration;
+      slider.value = state.trackPosition;
+
+      document.getElementById('playIcon').classList.toggle('hidden', state.isPlaying);
+      document.getElementById('pauseIcon').classList.toggle('hidden', !state.isPlaying);
+
+      ['eq1', 'eq2', 'eq3'].forEach(id => {
+        document.getElementById(id).classList.toggle('eq-paused', !state.isPlaying);
+      });
+    }
+
+    // =========================================================================
+    // DIAGNOSTICS / SCREEN TIME MODAL RENDERING
+    // =========================================================================
+    function openDiagnosticsModal() {
+      const list = document.getElementById('screenTimeAppList');
+      list.innerHTML = '';
+      const topApps = [...APPS_CATALOG].sort((a, b) => b.screenMinutes - a.screenMinutes).slice(0, 5);
+
+      topApps.forEach(app => {
+        const pct = Math.min(100, Math.round((app.screenMinutes / 60) * 100));
+        const row = document.createElement('div');
+        row.className = 'flex flex-col gap-1';
+        row.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span>${app.icon} ${app.name}</span>
+            <span class="font-mono-tech text-muted-custom">${app.screenMinutes}m</span>
+          </div>
+          <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div class="h-full bg-emerald-400" style="width: ${pct}%;"></div>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+      document.getElementById('diagnosticsModal').classList.remove('hidden');
+    }
+
+    // =========================================================================
+    // EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      updateClockAndDate();
+      renderFavorites();
+      renderDrawerApps();
+      renderAzSidebar();
+      renderMusicPlayer();
+
+      setInterval(() => {
+        updateClockAndDate();
+        updateTelemetryTick();
+      }, 1000);
+
+      // Clock 12h / 24h toggle
+      document.getElementById('clockFormatBtn').addEventListener('click', () => {
+        state.use24Hour = !state.use24Hour;
+        document.getElementById('setting24HourCheck').checked = state.use24Hour;
+        updateClockAndDate();
+        showToast(state.use24Hour ? '24-Hour Clock Enabled' : '12-Hour Clock Enabled');
+      });
+
+      // Focus / Zen Mode button
+      document.getElementById('focusModeQuickBtn').addEventListener('click', () => {
+        state.zenMode = !state.zenMode;
+        document.getElementById('focusStatusText').textContent = state.zenMode ? 'Zen Focus Active' : 'Zen Ready';
+        document.getElementById('focusDot').className = state.zenMode ? 'w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping' : 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+        showToast(state.zenMode ? 'Zen Focus Mode: Notifications Suppressed' : 'Zen Mode Off');
+      });
+
+      // RAM Boost / Cache Flush
+      function boostRam() {
+        const freedMb = Math.floor(280 + Math.random() * 240);
+        state.ramUsedGb = Math.max(1.2, Number((state.ramUsedGb - (freedMb / 1024)).toFixed(2)));
+        updateTelemetryTick();
+        showToast(`Freed ${freedMb} MB background memory`);
+      }
+      document.getElementById('ramBoostBtn').addEventListener('click', boostRam);
+      document.getElementById('modalRamCleanBtn').addEventListener('click', boostRam);
+
+      // Screen Time & CPU Modal triggers
+      document.getElementById('screenTimeCardBtn').addEventListener('click', openDiagnosticsModal);
+      document.getElementById('cpuCardBtn').addEventListener('click', openDiagnosticsModal);
+      document.getElementById('closeDiagnosticsBtn').addEventListener('click', () => {
+        document.getElementById('diagnosticsModal').classList.add('hidden');
+      });
+      document.getElementById('diagnosticsHomeBtn').addEventListener('click', () => {
+        document.getElementById('diagnosticsModal').classList.add('hidden');
+      });
+
+      // Search & Auto-Launch Toggle
+      const searchInput = document.getElementById('quickSearchInput');
+      searchInput.addEventListener('input', (e) => handleSearchQuery(e.target.value, false));
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          const q = searchInput.value.trim().toLowerCase();
+          if (!q) return;
+          const firstMatch = APPS_CATALOG.find(a => a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q));
+          if (firstMatch) {
+            searchInput.value = '';
+            document.getElementById('inlineSearchResults').classList.add('hidden');
+            launchApp(firstMatch.id, 'Enter Key Launch');
+          } else {
+            launchApp('browser', `Web Search: "${searchInput.value}"`);
+            searchInput.value = '';
+            document.getElementById('inlineSearchResults').classList.add('hidden');
+          }
+        }
+      });
+
+      document.getElementById('clearSearchBtn').addEventListener('click', () => {
+        searchInput.value = '';
+        handleSearchQuery('', false);
+        searchInput.focus();
+      });
+
+      function updateAutoLaunchUI() {
+        const btn = document.getElementById('autoLaunchToggleBtn');
+        btn.textContent = state.autoLaunch ? 'AUTO: ON' : 'AUTO: OFF';
+        btn.className = state.autoLaunch
+          ? 'px-2 py-1 rounded-xl text-[10px] font-mono-tech font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition'
+          : 'px-2 py-1 rounded-xl text-[10px] font-mono-tech font-medium surface-card text-muted-custom transition';
+        document.getElementById('settingAutoLaunchCheck').checked = state.autoLaunch;
+      }
+
+      document.getElementById('autoLaunchToggleBtn').addEventListener('click', () => {
+        state.autoLaunch = !state.autoLaunch;
+        updateAutoLaunchUI();
+        showToast(state.autoLaunch ? 'Auto-Launch Single Match: ON' : 'Auto-Launch Single Match: OFF');
+      });
+
+      // Edit Favorites pin mode
+      document.getElementById('editFavoritesBtn').addEventListener('click', () => {
+        state.editingFavorites = !state.editingFavorites;
+        document.getElementById('editFavoritesBtn').textContent = state.editingFavorites ? 'Done' : 'Edit Pins';
+        renderFavorites();
+      });
+
+      // Quick Utility Toggles
+      document.getElementById('toggleTorchBtn').addEventListener('click', () => {
+        state.torchOn = !state.torchOn;
+        document.getElementById('launcherShell').classList.toggle('torch-active', state.torchOn);
+        document.getElementById('torchLabel').textContent = state.torchOn ? 'Torch ON' : 'Torch';
+        showToast(state.torchOn ? 'Screen Torch Activated' : 'Torch Off');
+      });
+
+      document.getElementById('toggleDndBtn').addEventListener('click', () => {
+        state.dndOn = !state.dndOn;
+        document.getElementById('dndLabel').textContent = state.dndOn ? 'DND ON' : 'DND Off';
+        showToast(state.dndOn ? 'Do Not Disturb Enabled' : 'Do Not Disturb Disabled');
+      });
+
+      document.getElementById('toggleSaverBtn').addEventListener('click', () => {
+        state.ecoOn = !state.ecoOn;
+        document.getElementById('saverLabel').textContent = state.ecoOn ? 'Eco ON' : 'Eco Off';
+        updateTelemetryTick();
+        showToast(state.ecoOn ? 'Ultra Eco CPU Governor Enabled' : 'Standard CPU Mode');
+      });
+
+      // Quick Memo Scratchpad
+      const memoModal = document.getElementById('memoModal');
+      const memoArea = document.getElementById('quickMemoTextarea');
+      document.getElementById('openQuickNoteBtn').addEventListener('click', () => {
+        memoModal.classList.remove('hidden');
+      });
+      document.getElementById('closeMemoBtn').addEventListener('click', () => {
+        memoModal.classList.add('hidden');
+        showToast('Memo saved in local memory');
+      });
+      memoArea.addEventListener('input', () => {
+        document.getElementById('memoCharCount').textContent = `${memoArea.value.length} chars`;
+      });
+      document.getElementById('clearMemoBtn').addEventListener('click', () => {
+        memoArea.value = '';
+        document.getElementById('memoCharCount').textContent = '0 chars';
+      });
+
+      // Music Controls
+      document.getElementById('playPauseBtn').addEventListener('click', () => {
+        state.isPlaying = !state.isPlaying;
+        if (state.isPlaying) {
+          startSynthAudio();
+        } else {
+          stopSynthAudio();
+        }
+        renderMusicPlayer();
+      });
+
+      document.getElementById('prevTrackBtn').addEventListener('click', () => {
+        state.currentTrackIndex = (state.currentTrackIndex - 1 + PLAYLIST.length) % PLAYLIST.length;
+        state.trackPosition = 0;
+        if (state.isPlaying) startSynthAudio();
+        renderMusicPlayer();
+      });
+
+      document.getElementById('nextTrackBtn').addEventListener('click', () => {
+        state.currentTrackIndex = (state.currentTrackIndex + 1) % PLAYLIST.length;
+        state.trackPosition = 0;
+        if (state.isPlaying) startSynthAudio();
+        renderMusicPlayer();
+      });
+
+      document.getElementById('musicProgressSlider').addEventListener('input', (e) => {
+        state.trackPosition = Number(e.target.value);
+        renderMusicPlayer();
+      });
+
+      document.getElementById('musicArtBtn').addEventListener('click', () => {
+        state.enableSynth = !state.enableSynth;
+        document.getElementById('settingAudioSynthCheck').checked = state.enableSynth;
+        document.getElementById('audioSynthBadge').textContent = state.enableSynth ? 'SYNTH' : 'MUTED';
+        if (state.enableSynth && state.isPlaying) startSynthAudio();
+        else stopSynthAudio();
+        showToast(state.enableSynth ? 'Ambient Synth Audio Unmuted' : 'Audio Muted');
+      });
+
+      // Gesture All Apps Button (Click + Touch Swipe Up Gesture)
+      const gestureBtn = document.getElementById('gestureAllAppsBtn');
+      gestureBtn.addEventListener('click', openDrawer);
+
+      const shell = document.getElementById('launcherShell');
+      shell.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length === 1) {
+          state.touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      shell.addEventListener('touchend', (e) => {
+        if (state.touchStartY === null || !e.changedTouches || e.changedTouches.length === 0) return;
+        const deltaY = state.touchStartY - e.changedTouches[0].clientY;
+        const drawerHidden = document.getElementById('allAppsDrawer').classList.contains('hidden');
+        if (deltaY > 65 && drawerHidden) {
+          openDrawer();
+        } else if (deltaY < -65 && !drawerHidden) {
+          closeDrawer();
+        }
+        state.touchStartY = null;
+      }, { passive: true });
+
+      document.getElementById('closeDrawerBtn').addEventListener('click', closeDrawer);
+      document.getElementById('drawerHomeGestureBtn').addEventListener('click', closeDrawer);
+
+      // Drawer Search & Category Filters
+      document.getElementById('drawerSearchInput').addEventListener('input', (e) => {
+        handleSearchQuery(e.target.value, true);
+      });
+
+      document.querySelectorAll('.cat-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedCategory = btn.getAttribute('data-cat');
+          document.querySelectorAll('.cat-pill').forEach(b => {
+            b.className = 'cat-pill px-2.5 py-1 rounded-xl surface-card text-muted-custom';
+          });
+          btn.className = 'cat-pill px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          renderDrawerApps(document.getElementById('drawerSearchInput').value);
+        });
+      });
+
+      // Close Launched App Modal
+      document.getElementById('closeLaunchedAppBtn').addEventListener('click', () => {
+        document.getElementById('launchedAppModal').classList.add('hidden');
+      });
+
+      // Settings Modal & Theme Switcher
+      const settingsModal = document.getElementById('settingsModal');
+      document.getElementById('openSettingsBtn').addEventListener('click', () => {
+        settingsModal.classList.remove('hidden');
+      });
+      document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+      });
+      document.getElementById('settingsHomeBtn').addEventListener('click', () => {
+        settingsModal.classList.add('hidden');
+        showToast('Preferences saved');
+      });
+
+      document.querySelectorAll('.theme-OptionBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const theme = btn.getAttribute('data-theme');
+          document.body.classList.remove('theme-eink', 'theme-terminal', 'theme-nord');
+          if (theme !== 'oled') {
+            document.body.classList.add(`theme-${theme}`);
+          }
+          showToast(`Theme switched to ${theme.toUpperCase()}`);
+        });
+      });
+
+      document.getElementById('settingAutoLaunchCheck').addEventListener('change', (e) => {
+        state.autoLaunch = e.target.checked;
+        updateAutoLaunchUI();
+      });
+      document.getElementById('setting24HourCheck').addEventListener('change', (e) => {
+        state.use24Hour = e.target.checked;
+        updateClockAndDate();
+      });
+      document.getElementById('settingShowSecondsCheck').addEventListener('change', (e) => {
+        state.showSeconds = e.target.checked;
+        updateClockAndDate();
+      });
+      document.getElementById('settingAudioSynthCheck').addEventListener('change', (e) => {
+        state.enableSynth = e.target.checked;
+        if (!state.enableSynth) stopSynthAudio();
+      });
+
+      // Install Guide Modal & Fullscreen / Real Hardware API hooks
+      const installModal = document.getElementById('installGuideModal');
+      document.getElementById('openInstallGuideBtn').addEventListener('click', () => {
+        installModal.classList.remove('hidden');
+      });
+      document.getElementById('closeInstallGuideBtn').addEventListener('click', () => {
+        installModal.classList.add('hidden');
+      });
+      document.getElementById('installGuideHomeBtn').addEventListener('click', () => {
+        installModal.classList.add('hidden');
+      });
+      document.getElementById('realDeviceUriCheck').addEventListener('change', (e) => {
+        state.realDeviceUriMode = e.target.checked;
+        showToast(state.realDeviceUriMode ? 'Real Device App Links Enabled' : 'Simulated Sandbox Mode Active');
+      });
+      document.getElementById('fullscreenToggleBtn').addEventListener('click', () => {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+          installModal.classList.add('hidden');
+          showToast('Entered Fullscreen Launcher Mode');
+        } else if (document.exitFullscreen && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        } else {
+          showToast('Use browser menu -> Add to Home Screen for fullscreen');
+        }
+      });
+
+      // Read real device RAM & CPU cores & Battery if browser exposes them
+      if (navigator.deviceMemory) {
+        state.ramTotalGb = navigator.deviceMemory;
+      }
+      if (navigator.getBattery) {
+        navigator.getBattery().then(bat => {
+          const updateBat = () => {
+            const pct = Math.round(bat.level * 100);
+            document.getElementById('batteryText').textContent = `${pct}%`;
+            document.getElementById('batteryFill').style.width = `${pct}%`;
+          };
+          updateBat();
+          bat.addEventListener('levelchange', updateBat);
+        }).catch(() => {});
+      }
+
+      // Native Android APK WebView Bridge Integration (window.AndroidBridge)
+      if (window.AndroidBridge) {
+        try {
+          const rawApps = window.AndroidBridge.getInstalledAppsJson();
+          const parsedApps = JSON.parse(rawApps);
+          if (Array.isArray(parsedApps) && parsedApps.length > 0) {
+            APPS_CATALOG.length = 0;
+            parsedApps.forEach((a, idx) => {
+              APPS_CATALOG.push({
+                id: a.packageName,
+                name: a.label,
+                category: a.category || 'App',
+                icon: '📱',
+                pinned: idx < 6,
+                screenMinutes: a.screenMinutes || 0,
+                ramMb: a.ramMb || 24,
+                isNativeAndroid: true
+              });
+            });
+            renderFavorites();
+            renderDrawerApps('');
+          }
+          setInterval(() => {
+            try {
+              const memJson = JSON.parse(window.AndroidBridge.getSystemMemoryJson());
+              if (memJson.totalGb) state.ramTotalGb = memJson.totalGb;
+              if (memJson.usedGb) state.ramUsedGb = memJson.usedGb;
+            } catch (e) {}
+          }, 2000);
+        } catch (err) {}
+      }
+
+      // Global Keyboard Shortcut: '/' focuses search
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          document.getElementById('quickSearchInput').focus();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
